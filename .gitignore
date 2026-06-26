@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.remember/
+old_stuff/
+
+# Generated — re-create with parse_md.py
+questions.json
+
+# macOS
+.DS_Store
+
+*testing*

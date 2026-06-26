@@ -1,0 +1,14 @@
+services:
+  exam-prep:
+    build: .
+    ports:
+      - "8888:8888"
+
+  # To use your own questions, uncomment and adjust the lines below:
+  # exam-prep:
+  #   build: .
+  #   ports:
+  #     - "8888:8888"
+  #   volumes:
+  #     - ./my-questions:/questions
+  #   command: ["--input-file", "/questions/questions.yaml"]

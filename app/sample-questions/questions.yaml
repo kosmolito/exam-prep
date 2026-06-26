@@ -1,0 +1,122 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Exam Prep — sample input file
+#
+# Usage:
+#   python serve.py --input-file sample-questions.yaml
+#
+# Fields:
+#   meta.title        Page title shown in the browser and home screen
+#   meta.description  Subtitle shown on the home screen (optional)
+#   meta.pass_mark    Passing score percentage (default 80)
+#   meta.time_limit   Exam-mode timer in minutes; omit to hide Exam Mode section
+#
+#   questions[].id            Unique integer (used for session/bookmark storage)
+#   questions[].number        Display number shown in the UI
+#   questions[].question      Question text (supports backtick code spans: `code`)
+#   questions[].options       Map of A/B/C/D → option text
+#   questions[].correct_answers  List of correct option keys — 1 key = single-select,
+#                                2+ keys = multi-select (shows "Choose N." prompt)
+#   questions[].explanation   Shown after submitting in practice mode (optional)
+#   images                    Place <question-number>.png/jpg/jpeg next to this file;
+#                             the server detects and serves them automatically.
+# ──────────────────────────────────────────────────────────────────────────────
+
+meta:
+  title: "Sample Certification Exam"
+  description: "Example question set — replace with your own"
+  pass_mark: 80
+  time_limit: 60   # minutes; remove this line to hide the Exam Mode section
+
+questions:
+
+  # ── Single-select ───────────────────────────────────────────────────────────
+  - id: 1
+    number: 1
+    question: "Which command initialises a new Git repository in the current directory?"
+    options:
+      A: "git start"
+      B: "git init"
+      C: "git create"
+      D: "git new"
+    correct_answers: ["B"]
+    explanation: >
+      `git init` creates a new .git directory in the current folder,
+      setting up the data structures needed for version control.
+
+  - id: 2
+    number: 2
+    question: "What does the HTTP status code 404 indicate?"
+    options:
+      A: "Internal server error"
+      B: "Request accepted but not yet processed"
+      C: "The requested resource could not be found"
+      D: "Unauthorised — authentication required"
+    correct_answers: ["C"]
+    explanation: >
+      404 Not Found means the server could not locate the requested URL.
+      It does not reveal whether the absence is permanent or temporary.
+
+  - id: 3
+    number: 3
+    question: >
+      A container image is built with the following Dockerfile instruction:
+      `EXPOSE 8080`
+      What does this instruction do?
+    options:
+      A: "Publishes port 8080 on the host machine automatically"
+      B: "Documents that the container listens on port 8080 at runtime"
+      C: "Blocks all traffic except on port 8080"
+      D: "Maps port 8080 inside the container to port 80 on the host"
+    correct_answers: ["B"]
+    explanation: >
+      EXPOSE is documentation only. It tells users and tooling which port
+      the application inside the container uses, but does not publish or
+      bind the port on the host. You need `-p 8080:8080` at `docker run`
+      time to actually forward the port.
+
+  # ── Multi-select (correct_answers has more than one entry) ──────────────────
+  - id: 4
+    number: 4
+    question: "Which two statements about Kubernetes Deployments are correct?"
+    options:
+      A: "A Deployment manages a ReplicaSet to maintain a desired number of pod replicas"
+      B: "Deployments can only be updated by deleting and recreating them"
+      C: "Rolling updates allow zero-downtime upgrades by gradually replacing pods"
+      D: "A Deployment directly schedules pods onto nodes without using a ReplicaSet"
+    correct_answers: ["A", "C"]
+    explanation: >
+      A Deployment owns one or more ReplicaSets and orchestrates rolling
+      updates between them. During a rolling update, new pods are started
+      before old ones are terminated, achieving zero downtime.
+
+  - id: 5
+    number: 5
+    question: "Which two layers of the OSI model are responsible for end-to-end data delivery and routing respectively?"
+    options:
+      A: "Data Link (Layer 2)"
+      B: "Network (Layer 3)"
+      C: "Transport (Layer 4)"
+      D: "Session (Layer 5)"
+    correct_answers: ["C", "B"]
+    explanation: >
+      The Transport layer (L4) provides end-to-end communication between
+      processes (TCP/UDP). The Network layer (L3) handles logical addressing
+      and routing between different networks (IP).
+
+  # ── Question with an image exhibit ─────────────────────────────────────────
+  # Place a file named "6.png" (or .jpg/.jpeg/.webp) in the same directory as
+  # this YAML file. The server will detect it and display it above the options.
+  - id: 6
+    number: 6
+    question: "Based on the architecture diagram shown, which component acts as the ingress point for external traffic?"
+    options:
+      A: "Worker Node"
+      B: "etcd cluster"
+      C: "Load Balancer"
+      D: "Container Runtime"
+    correct_answers: ["C"]
+    explanation: >
+      In a typical Kubernetes deployment, a cloud load balancer (or an
+      Ingress controller backed by one) is the first component that
+      receives traffic from the public internet before distributing it
+      to the appropriate service and pods.

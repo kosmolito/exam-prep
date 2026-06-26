@@ -6,17 +6,16 @@ A browser-based exam practice tool. Load any question set as a YAML or JSON file
 
 ### Docker (recommended)
 
-#### Build
+#### Run - sample questions
 
 ```bash
-# Build the container
-docker build . -t exam-prep
+docker run -p 8888:8888 ghcr.io/kosmolito/exam-prep:latest
 ```
 
-#### Run - Docker inline
+#### Run - your own questions
 
 ```bash
-docker run -p 8888:8888 -v ./my-exam:/questions exam-prep --input-file /questions/questions.yaml
+docker run -p 8888:8888 -v ./my-exam:/questions ghcr.io/kosmolito/exam-prep:latest --input-file /questions/questions.yaml
 ```
 
 #### Run - Docker Compose
@@ -35,9 +34,24 @@ Open **http://localhost:8888**
 
 ```bash
 pip install -r app/requirements.txt
-python app/serve.py                                   # sample questions
+python app/serve.py                                    # sample questions
 python app/serve.py --input-file my-exam/questions.yaml
 ```
+
+## Build from source
+
+```bash
+git clone https://github.com/kosmolito/exam-prep.git
+cd exam-prep
+
+# Build the image
+docker build -t exam-prep .
+
+# Run
+docker run -p 8888:8888 exam-prep
+```
+
+The image is also rebuilt and published automatically to `ghcr.io/kosmolito/exam-prep:latest` on every push to `main` that changes `Dockerfile`, `.dockerignore`, or the `app/` directory.
 
 ## Project layout
 
@@ -52,6 +66,9 @@ python app/serve.py --input-file my-exam/questions.yaml
 │   └── sample-questions/   # Built-in demo questions
 │       ├── questions.yaml
 │       └── 6.png
+├── .github/
+│   └── workflows/
+│       └── docker-publish.yml
 ├── Dockerfile
 └── docker-compose.yaml
 ```

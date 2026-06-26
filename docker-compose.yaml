@@ -1,6 +1,7 @@
 services:
   exam-prep:
-    build: .
+    container_name: exam-prep
+    image: ghcr.io/kosmolito/exam-prep:latest
     ports:
       - "8888:8888"
 

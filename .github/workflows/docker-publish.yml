@@ -10,6 +10,7 @@ on:
       - "Dockerfile"
       - ".dockerignore"
       - "app/**"
+  workflow_dispatch:
 
 permissions:
   contents: read

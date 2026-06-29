@@ -277,6 +277,21 @@ function prevQuestion() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function goToQuestion(targetIndex) {
+  const { exam } = state;
+  if (!exam || targetIndex < 0 || targetIndex >= exam.queue.length) return;
+
+  exam.index = targetIndex;
+  const q = exam.queue[targetIndex];
+  const prev = exam.results[q.id];
+  exam.selected  = prev ? [...prev.selected] : [];
+  exam.submitted = false;
+
+  saveSession();
+  render('exam');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function finishExam() {
   clearInterval(timerInterval);
 
@@ -509,13 +524,45 @@ function renderExam() {
     : null;
 
   return `
+    <div id="nav-backdrop" class="nav-backdrop"></div>
+    <div class="question-nav-panel" id="question-nav-panel">
+      <div class="nav-panel-header">
+        <span class="nav-panel-title">All Questions</span>
+        <button class="btn-ghost btn-nav-close" id="btn-nav-close">✕</button>
+      </div>
+      <div class="nav-legend">
+        <span><span class="nav-dot nav-dot-current"></span>Current</span>
+        <span><span class="nav-dot nav-dot-correct"></span>Correct</span>
+        <span><span class="nav-dot nav-dot-wrong"></span>Wrong</span>
+        <span><span class="nav-dot nav-dot-bm"></span>Bookmarked</span>
+      </div>
+      <div class="nav-q-grid">
+        ${queue.map((q, i) => {
+          const res = results[q.id];
+          const isCurrent = i === index;
+          const starred = isBookmarked(q.id);
+          let cls = 'nav-q-btn';
+          if (isCurrent)  cls += ' nav-q-current';
+          else if (res)   cls += res.correct ? ' nav-q-correct' : ' nav-q-wrong';
+          if (starred)    cls += ' nav-q-bm';
+          return `
+            <button class="${cls}" data-nav-index="${i}" title="Question ${q.number ?? i + 1}${starred ? ' ★' : ''}">
+              <span class="nav-q-num">${q.number ?? i + 1}</span>
+              ${starred ? '<span class="nav-q-star">★</span>' : ''}
+            </button>`;
+        }).join('')}
+      </div>
+    </div>
     <div class="exam">
       <div class="exam-topbar">
         <button class="btn-ghost" id="btn-home">← Home</button>
         <div class="exam-progress-text">${index + 1} / ${total}</div>
-        ${isExam && remainingSecs !== null
-          ? `<div id="exam-timer" class="exam-timer${remainingSecs <= 60 ? ' timer-critical' : remainingSecs <= 300 ? ' timer-warning' : ''}">${formatTime(remainingSecs)}</div>`
-          : `<div class="exam-score">${correct}/${answered} ✓</div>`}
+        <div class="topbar-end">
+          ${isExam && remainingSecs !== null
+            ? `<div id="exam-timer" class="exam-timer${remainingSecs <= 60 ? ' timer-critical' : remainingSecs <= 300 ? ' timer-warning' : ''}">${formatTime(remainingSecs)}</div>`
+            : `<div class="exam-score">${correct}/${answered} ✓</div>`}
+          <button class="btn-nav-toggle" id="btn-nav-toggle" title="Question overview" aria-label="Question overview">&#9776;</button>
+        </div>
       </div>
 
       <div class="progress-track">
@@ -736,6 +783,23 @@ function attachHandlers(screen) {
       if (confirm('Finish the exam now? Unanswered questions will be marked as wrong.')) {
         finishExam();
       }
+    });
+
+    const openNav  = () => {
+      document.getElementById('question-nav-panel')?.classList.add('open');
+      document.getElementById('nav-backdrop')?.classList.add('open');
+    };
+    const closeNav = () => {
+      document.getElementById('question-nav-panel')?.classList.remove('open');
+      document.getElementById('nav-backdrop')?.classList.remove('open');
+    };
+
+    document.getElementById('btn-nav-toggle')?.addEventListener('click', openNav);
+    document.getElementById('btn-nav-close')?.addEventListener('click', closeNav);
+    document.getElementById('nav-backdrop')?.addEventListener('click', closeNav);
+
+    document.querySelectorAll('[data-nav-index]').forEach(btn => {
+      btn.addEventListener('click', () => goToQuestion(parseInt(btn.dataset.navIndex)));
     });
   }
 

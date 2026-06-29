@@ -7,10 +7,14 @@ Usage:
   python serve.py --input-file questions.yaml   # loads YAML, serves dynamically
   python serve.py --input-file questions.json   # loads JSON, serves dynamically
   python serve.py --port 9090                   # custom port (default: 8888)
+
+Environment variables:
+  QUESTIONS_FILE   Path to the questions file (overridden by --input-file if both set)
 """
 import argparse
 import http.server
 import json
+import os
 import socketserver
 import sys
 import webbrowser
@@ -130,8 +134,10 @@ def main():
 
     img_dir: Path | None = None
 
-    if args.input_file:
-        input_path = Path(args.input_file).resolve()
+    input_file = args.input_file or os.environ.get('QUESTIONS_FILE')
+
+    if input_file:
+        input_path = Path(input_file).resolve()
         if not input_path.exists():
             sys.exit(f"File not found: {input_path}")
 

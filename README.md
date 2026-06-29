@@ -15,7 +15,10 @@ docker run -p 8888:8888 ghcr.io/kosmolito/exam-prep:latest
 #### Run - your own questions
 
 ```bash
-docker run -p 8888:8888 -v ./my-exam:/questions ghcr.io/kosmolito/exam-prep:latest --input-file /questions/questions.yaml
+docker run -p 8888:8888 \
+  -v ./my-exam:/questions \
+  -e QUESTIONS_FILE=/questions/questions.yaml \
+  ghcr.io/kosmolito/exam-prep:latest
 ```
 
 #### Run - Docker Compose
@@ -24,11 +27,11 @@ docker run -p 8888:8888 -v ./my-exam:/questions ghcr.io/kosmolito/exam-prep:late
 # Default — loads the built-in sample questions
 docker compose up
 
-# Your own questions — uncomment and edit the volume/command in docker-compose.yaml first
+# Your own questions — uncomment and edit the volume/environment in docker-compose.yaml first
 docker compose up
 ```
 
-Open **http://localhost:8888**
+Open <http://localhost:8888>
 
 ### Local (Python)
 
@@ -113,7 +116,7 @@ questions:
 ## Features
 
 | Feature | Details |
-|---|---|
+| --- | --- |
 | Practice mode | Instant correct/wrong feedback + explanation per question |
 | Exam mode | Countdown timer, no feedback until results screen |
 | Session persistence | Unfinished sessions resume after browser/server restart |

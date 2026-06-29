@@ -12,4 +12,5 @@ services:
   #     - "8888:8888"
   #   volumes:
   #     - ./my-questions:/questions
-  #   command: ["--input-file", "/questions/questions.yaml"]
+  #   environment:
+  #     - QUESTIONS_FILE=/questions/questions.yaml

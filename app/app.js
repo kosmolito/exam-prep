@@ -88,14 +88,15 @@ function saveSession() {
   if (!state.exam) return;
   const { exam } = state;
   store.set('activeSession', {
-    mode:       exam.mode,
-    type:       exam.type,
-    queueIds:   exam.queue.map(q => q.id),
-    index:      exam.index,
-    results:    exam.results,
-    selected:   exam.selected,
-    submitted:  exam.submitted,
-    timerEndMs: exam.timerEndMs,
+    mode:         exam.mode,
+    type:         exam.type,
+    queueIds:     exam.queue.map(q => q.id),
+    index:        exam.index,
+    results:      exam.results,
+    selected:     exam.selected,
+    submitted:    exam.submitted,
+    timerEndMs:   exam.timerEndMs,
+    optionOrders: exam.optionOrders,
   });
 }
 
@@ -126,14 +127,15 @@ function loadSession() {
   }
 
   state.exam = {
-    mode:       saved.mode,
-    type:       saved.type ?? 'practice',
+    mode:         saved.mode,
+    type:         saved.type ?? 'practice',
     queue,
-    index:      saved.index,
-    results:    saved.results,
-    selected:   normSelected(saved.selected),
-    submitted:  saved.submitted,
-    timerEndMs: saved.timerEndMs ?? null,
+    index:        saved.index,
+    results:      saved.results,
+    selected:     normSelected(saved.selected),
+    submitted:    saved.submitted,
+    timerEndMs:   saved.timerEndMs ?? null,
+    optionOrders: saved.optionOrders ?? null,
   };
   return true;
 }
@@ -186,14 +188,16 @@ function startExam(mode, type = 'practice', customQueue = null) {
     timerEndMs = Date.now() + scaledMins * 60_000;
   }
 
+  const shuffledQueue = shuffle(queue);
   state.exam = {
     mode, type,
-    queue:     shuffle(queue),
-    index:     0,
-    results:   {},
-    selected:  [],
-    submitted: false,
+    queue:        shuffledQueue,
+    index:        0,
+    results:      {},
+    selected:     [],
+    submitted:    false,
     timerEndMs,
+    optionOrders: Object.fromEntries(shuffledQueue.map(q => [q.id, shuffle(Object.keys(q.options ?? {}))])),
   };
 
   clearSession();
@@ -512,7 +516,7 @@ function renderExam() {
   const correct  = Object.values(results).filter(r => r.correct).length;
   const result   = submitted ? results[q.id] : null;
   const progress = Math.round((index / total) * 100);
-  const letters  = Object.keys(q.options ?? {});
+  const letters  = exam.optionOrders?.[q.id] ?? Object.keys(q.options ?? {});
   const starred  = isBookmarked(q.id);
   const isExam   = type === 'exam';
   const correctAnswers = q.correct_answers ?? [];

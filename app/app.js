@@ -11,6 +11,10 @@ function esc(str) {
 
 function fmt(str) {
   if (!str) return '';
+  // Multi-line content with indented lines (code/YAML) — preserve whitespace
+  if (str.includes('\n') && /^ /m.test(str)) {
+    return `<span class="fmt-pre">${esc(str)}</span>`;
+  }
   return esc(str)
     .replace(/`([^`\n]+)`/g, '<code>$1</code>')
     .replace(/\n/g, '<br>');

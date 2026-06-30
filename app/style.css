@@ -53,6 +53,14 @@ code {
   color: var(--purple-dark);
 }
 
+.fmt-pre {
+  display: block;
+  font-family: "SF Mono", "Fira Code", Consolas, monospace;
+  font-size: .83rem;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
 details > summary {
   cursor: pointer;
   user-select: none;

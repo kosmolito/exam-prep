@@ -103,6 +103,64 @@ questions:
       processes (TCP/UDP). The Network layer (L3) handles logical addressing
       and routing between different networks (IP).
 
+  # ── Question with YAML/code indentation in options ─────────────────────────
+  - id: 7
+    number: 7
+    question: "Which ConfigMap correctly sets a 30-day log retention period for the `tenant-innovation` namespace in Loki?"
+    options:
+      A: |
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: logging-innovation-config
+          namespace: tenant-innovation
+        data:
+          values.yaml: |
+            loki:
+              structuredConfig:
+                limits_config:
+                  retention_period: 30d
+      B: |
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: logging-innovation-config
+          namespace: tenant-innovation
+        data:
+          values.yaml: |
+            loki:
+              structuredConfig:
+                limits_config:
+                  retention_period: 7d
+      C: |
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: logging-innovation-config
+          namespace: tenant-analytics
+        data:
+          values.yaml: |
+            loki:
+              structuredConfig:
+                limits_config:
+                  retention_period: 30d
+      D: |
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: logging-innovation-config
+          namespace: tenant-innovation
+        data:
+          values.yaml: |
+            loki:
+              retention_period: 30d
+    correct_answers: ["A"]
+    explanation: >
+      Option A is the only one that targets the correct namespace (tenant-innovation)
+      and places `retention_period` under the correct nested path:
+      `loki.structuredConfig.limits_config`. Option B uses 7d, option C targets the
+      wrong namespace, and option D uses an incorrect config path.
+
   # ── Question with an image exhibit ─────────────────────────────────────────
   # Place a file named "6.png" (or .jpg/.jpeg/.webp) in the same directory as
   # this YAML file. The server will detect it and display it above the options.

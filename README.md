@@ -9,13 +9,13 @@ A browser-based exam practice tool. Load any question set as a YAML or JSON file
 #### Run - sample questions
 
 ```bash
-docker run -p 8888:8888 ghcr.io/kosmolito/exam-prep:latest
+docker run -p 8080:8080 ghcr.io/kosmolito/exam-prep:latest
 ```
 
 #### Run - your own questions
 
 ```bash
-docker run -p 8888:8888 \
+docker run -p 8080:8080 \
   -v ./my-exam:/questions \
   -e QUESTIONS_FILE=/questions/questions.yaml \
   ghcr.io/kosmolito/exam-prep:latest
@@ -31,7 +31,7 @@ docker compose up
 docker compose up
 ```
 
-Open <http://localhost:8888>
+Open <http://localhost:8080>
 
 ### Local (Python)
 
@@ -51,7 +51,7 @@ cd exam-prep
 docker build -t exam-prep .
 
 # Run
-docker run -p 8888:8888 exam-prep
+docker run -p 8080:8080 exam-prep
 ```
 
 The image is also rebuilt and published automatically to `ghcr.io/kosmolito/exam-prep:latest` on every push to `main` that changes `Dockerfile`, `.dockerignore`, or the `app/` directory.

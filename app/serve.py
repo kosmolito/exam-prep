@@ -6,7 +6,7 @@ Usage:
   python serve.py                               # loads sample-questions/questions.yaml
   python serve.py --input-file questions.yaml   # loads YAML, serves dynamically
   python serve.py --input-file questions.json   # loads JSON, serves dynamically
-  python serve.py --port 9090                   # custom port (default: 8888)
+  python serve.py --port 9090                   # custom port (default: 8080)
 
 Environment variables:
   QUESTIONS_FILE   Path to the questions file (overridden by --input-file if both set)
@@ -249,8 +249,8 @@ def main():
              'Defaults to sample-questions/questions.yaml in the app directory.',
     )
     parser.add_argument(
-        '--port', '-p', type=int, default=8888,
-        help='Port to listen on (default: 8888)',
+        '--port', '-p', type=int, default=8080,
+        help='Port to listen on (default: 8080)',
     )
     parser.add_argument(
         '--no-browser', action='store_true',

@@ -9,6 +9,6 @@ COPY app ./
 RUN pip install -r requirements.txt --no-cache-dir
 
 
-EXPOSE 8888
+EXPOSE 8080
 
 ENTRYPOINT ["python3", "serve.py", "--no-browser"]

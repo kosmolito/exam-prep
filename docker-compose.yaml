@@ -3,13 +3,13 @@ services:
     container_name: exam-prep
     image: ghcr.io/kosmolito/exam-prep:latest
     ports:
-      - "8888:8888"
+      - "8080:8080"
 
   # To use your own questions, uncomment and adjust the lines below:
   # exam-prep:
   #   build: .
   #   ports:
-  #     - "8888:8888"
+  #     - "8080:8080"
   #   volumes:
   #     - ./my-questions:/questions
   #   environment:

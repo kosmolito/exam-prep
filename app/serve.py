@@ -19,6 +19,7 @@ import socketserver
 import sys
 import webbrowser
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
 
 APP_ROOT = Path(__file__).parent
 IMAGE_EXTS = ('.png', '.jpg', '.jpeg', '.webp')
@@ -74,8 +75,37 @@ def attach_images(data: dict, img_dir: Path) -> None:
             q.setdefault('image', None)
 
 
-def make_handler(questions_json_bytes: bytes, img_dir: Path | None):
-    """Return a request handler class configured with in-memory questions data."""
+def switch_active_file(active: dict, path: Path) -> None:
+    """Load a questions file and update the shared active state dict in-place."""
+    data = load_input_file(path)
+    img_dir = path.parent
+    attach_images(data, img_dir)
+    active['json_bytes'] = json.dumps(data, ensure_ascii=False).encode('utf-8')
+    active['img_dir']    = img_dir
+    active['path']       = path
+
+
+def list_question_files(questions_dir: Path, active_path: Path | None) -> list[dict]:
+    """Return metadata for all question files found in questions_dir."""
+    files = []
+    for p in sorted(questions_dir.iterdir()):
+        if p.is_file() and p.suffix.lower() in ('.yaml', '.yml', '.json'):
+            try:
+                data = load_input_file(p)
+                meta = data.get('meta', {})
+                files.append({
+                    'name':   p.name,
+                    'title':  meta.get('title', p.stem),
+                    'count':  len(data.get('questions', [])),
+                    'active': p == active_path,
+                })
+            except Exception:
+                pass
+    return files
+
+
+def make_handler(active: dict, questions_dir: Path | None):
+    """Return a request handler class backed by mutable shared active state."""
 
     class Handler(http.server.SimpleHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
@@ -83,11 +113,18 @@ def make_handler(questions_json_bytes: bytes, img_dir: Path | None):
 
         def do_GET(self):
             if self.path == '/questions.json':
-                self._serve_bytes(questions_json_bytes, 'application/json; charset=utf-8')
+                self._serve_bytes(active['json_bytes'], 'application/json; charset=utf-8')
 
-            elif self.path.startswith('/images/') and img_dir is not None:
+            elif self.path == '/api/files':
+                if questions_dir and questions_dir.is_dir():
+                    files = list_question_files(questions_dir, active['path'])
+                else:
+                    files = []
+                self._serve_bytes(json.dumps(files).encode('utf-8'), 'application/json; charset=utf-8')
+
+            elif self.path.startswith('/images/') and active['img_dir'] is not None:
+                img_dir = active['img_dir']
                 filename = self.path[len('/images/'):]
-                # Prevent path traversal
                 img_path = (img_dir / filename).resolve()
                 if not str(img_path).startswith(str(img_dir.resolve())):
                     self.send_error(403)
@@ -102,6 +139,95 @@ def make_handler(questions_json_bytes: bytes, img_dir: Path | None):
             else:
                 super().do_GET()
 
+        def do_POST(self):
+            if self.path == '/api/files/load':
+                if not questions_dir:
+                    self.send_error(400, 'No questions directory configured'); return
+                try:
+                    length = int(self.headers.get('Content-Length', 0))
+                    body = json.loads(self.rfile.read(length))
+                    name = body.get('name', '')
+                    target = (questions_dir / name).resolve()
+                    if not str(target).startswith(str(questions_dir.resolve())):
+                        self.send_error(403, 'Path traversal denied'); return
+                    if not target.is_file():
+                        self.send_error(404, 'File not found'); return
+                    switch_active_file(active, target)
+                    print(f"Switched to: {target.name}")
+                    self._serve_bytes(b'{"ok":true}', 'application/json')
+                except Exception as exc:
+                    self.send_error(500, str(exc))
+
+            elif self.path.startswith('/api/files/upload'):
+                if not questions_dir:
+                    self.send_error(400, 'No questions directory configured'); return
+                try:
+                    params = parse_qs(urlparse(self.path).query)
+                    name   = unquote(params.get('name', [''])[0]).strip()
+
+                    if not name or any(c in name for c in ('/', '\\')) or name.startswith('.'):
+                        self.send_error(400, 'Invalid filename'); return
+                    suffix = Path(name).suffix.lower()
+                    if suffix not in ('.yaml', '.yml', '.json'):
+                        self.send_error(400, 'Only .yaml, .yml, or .json files are allowed'); return
+
+                    length  = int(self.headers.get('Content-Length', 0))
+                    content = self.rfile.read(length)
+
+                    # Validate content before saving
+                    try:
+                        text = content.decode('utf-8')
+                        if suffix in ('.yaml', '.yml'):
+                            try:
+                                import yaml
+                            except ImportError:
+                                self.send_error(400, 'PyYAML not installed on server'); return
+                            data = yaml.safe_load(text)
+                        else:
+                            data = json.loads(text)
+                        if isinstance(data, list):
+                            data = {'questions': data}
+                        if not isinstance(data.get('questions'), list) or not data['questions']:
+                            raise ValueError('File must contain a non-empty "questions" list')
+                    except Exception as exc:
+                        self.send_error(400, str(exc)[:300]); return
+
+                    target = (questions_dir / name).resolve()
+                    if not str(target).startswith(str(questions_dir.resolve())):
+                        self.send_error(403, 'Path traversal denied'); return
+                    overwrite = params.get('overwrite', [''])[0].lower() == 'true'
+                    if target.exists() and not overwrite:
+                        self.send_error(409, f'A file named "{name}" already exists.'); return
+
+                    target.write_bytes(content)
+                    if target == active['path']:
+                        switch_active_file(active, target)
+                    print(f"Uploaded: {name}")
+                    self._serve_bytes(b'{"ok":true}', 'application/json')
+                except Exception as exc:
+                    self.send_error(500, str(exc))
+
+            else:
+                self.send_error(404)
+
+        def do_DELETE(self):
+            if self.path.startswith('/api/files/'):
+                if not questions_dir:
+                    self.send_error(400, 'No questions directory configured'); return
+                name = unquote(self.path[len('/api/files/'):])
+                target = (questions_dir / name).resolve()
+                if not str(target).startswith(str(questions_dir.resolve())):
+                    self.send_error(403, 'Path traversal denied'); return
+                if not target.is_file():
+                    self.send_error(404, 'File not found'); return
+                if target == active['path']:
+                    self.send_error(409, 'Cannot delete the active file'); return
+                target.unlink()
+                print(f"Deleted: {name}")
+                self._serve_bytes(b'{"ok":true}', 'application/json')
+            else:
+                self.send_error(404)
+
         def _serve_bytes(self, body: bytes, content_type: str):
             self.send_response(200)
             self.send_header('Content-Type', content_type)
@@ -110,7 +236,7 @@ def make_handler(questions_json_bytes: bytes, img_dir: Path | None):
             self.wfile.write(body)
 
         def log_message(self, fmt, *args):
-            pass  # suppress per-request noise
+            pass
 
     return Handler
 
@@ -120,7 +246,7 @@ def main():
     parser.add_argument(
         '--input-file', '-i', metavar='FILE',
         help='Questions file (.yaml, .yml, or .json). '
-             'Defaults to questions.json in the app directory.',
+             'Defaults to sample-questions/questions.yaml in the app directory.',
     )
     parser.add_argument(
         '--port', '-p', type=int, default=8888,
@@ -132,51 +258,36 @@ def main():
     )
     args = parser.parse_args()
 
-    img_dir: Path | None = None
-
     input_file = args.input_file or os.environ.get('QUESTIONS_FILE')
 
     if input_file:
-        input_path = Path(input_file).resolve()
-        if not input_path.exists():
-            sys.exit(f"File not found: {input_path}")
-
-        print(f"Loading questions from: {input_path}")
-        data = load_input_file(input_path)
-
-        img_dir = input_path.parent
-        attach_images(data, img_dir)
-
-        n = len(data.get('questions', []))
-        title = data.get('meta', {}).get('title', input_path.stem)
-        imgs = sum(1 for q in data.get('questions', []) if q.get('image'))
-        print(f"  {n} questions loaded  ·  {imgs} with images  ·  title: {title!r}")
-
-        questions_json_bytes = json.dumps(data, ensure_ascii=False).encode('utf-8')
-        Handler = make_handler(questions_json_bytes, img_dir)
+        initial_path = Path(input_file).resolve()
+        if not initial_path.exists():
+            sys.exit(f"File not found: {initial_path}")
     else:
-        # Default: sample-questions/questions.yaml
-        default_path = APP_ROOT / 'sample-questions' / 'questions.yaml'
-        if not default_path.exists():
+        initial_path = APP_ROOT / 'sample-questions' / 'questions.yaml'
+        if not initial_path.exists():
             sys.exit(
                 "Default file not found: sample-questions/questions.yaml\n"
                 "Run with --input-file to specify a questions file."
             )
-        print(f"Loading questions from: {default_path}")
-        data = load_input_file(default_path)
-        img_dir = default_path.parent
-        attach_images(data, img_dir)
-        n = len(data.get('questions', []))
-        title = data.get('meta', {}).get('title', default_path.stem)
-        imgs = sum(1 for q in data.get('questions', []) if q.get('image'))
-        print(f"  {n} questions loaded  ·  {imgs} with images  ·  title: {title!r}")
-        questions_json_bytes = json.dumps(data, ensure_ascii=False).encode('utf-8')
-        Handler = make_handler(questions_json_bytes, img_dir)
+
+    active: dict = {'json_bytes': None, 'img_dir': None, 'path': None}
+    print(f"Loading questions from: {initial_path}")
+    switch_active_file(active, initial_path)
+    questions_dir = initial_path.parent
+
+    data = json.loads(active['json_bytes'])
+    n     = len(data.get('questions', []))
+    title = data.get('meta', {}).get('title', initial_path.stem)
+    imgs  = sum(1 for q in data.get('questions', []) if q.get('image'))
+    print(f"  {n} questions loaded  ·  {imgs} with images  ·  title: {title!r}")
 
     url = f"http://localhost:{args.port}"
     print(f"\nExam Prep  →  {url}")
     print("Press Ctrl-C to stop.\n")
 
+    Handler = make_handler(active, questions_dir)
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", args.port), Handler) as httpd:
         if not args.no_browser:

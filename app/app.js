@@ -48,6 +48,7 @@ const state = {
   questions: [],
   meta: { title: 'Exam Prep', description: '', pass_mark: 80, time_limit: null },
   exam: null,
+  files: [],
 };
 
 /* ── User history (localStorage) ───────────────────── */
@@ -81,6 +82,127 @@ const toggleBookmark = id => {
   const ids = store.get('bookmarkedIds', []);
   store.set('bookmarkedIds', ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]);
 };
+
+/* ── File management ───────────────────────────────── */
+
+async function loadFileList() {
+  try {
+    const resp = await fetch('/api/files');
+    if (resp.ok) state.files = await resp.json();
+  } catch { state.files = []; }
+}
+
+async function switchFile(name) {
+  const resp = await fetch('/api/files/load', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  if (!resp.ok) { alert('Failed to load file.'); return; }
+  await reloadQuestions();
+}
+
+async function deleteFile(name) {
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  const resp = await fetch(`/api/files/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  if (!resp.ok) {
+    alert(resp.status === 409 ? 'Cannot delete the active question set.' : 'Failed to delete file.');
+    return;
+  }
+  await loadFileList();
+  render('home');
+}
+
+let _pendingUpload = null;
+
+async function uploadFile(file) {
+  if (!file) return;
+  const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+  if (!['.yaml', '.yml', '.json'].includes(ext)) {
+    alert('Only .yaml, .yml, or .json files are supported.'); return;
+  }
+  await _doUpload(file, file.name, false);
+}
+
+async function _doUpload(file, name, overwrite) {
+  const dropZone = document.getElementById('file-drop-zone');
+  if (dropZone) { dropZone.classList.add('uploading'); dropZone.innerHTML = `Uploading ${esc(name)}…`; }
+  try {
+    const url = `/api/files/upload?name=${encodeURIComponent(name)}${overwrite ? '&overwrite=true' : ''}`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: file,
+    });
+    if (resp.status === 409) {
+      _pendingUpload = file;
+      _showUploadConflict(name);
+    } else if (!resp.ok) {
+      const text = await resp.text();
+      if (dropZone) dropZone.classList.remove('uploading');
+      alert(`Upload failed: ${text}`);
+    } else {
+      _pendingUpload = null;
+      await reloadQuestions();
+    }
+  } catch {
+    if (dropZone) dropZone.classList.remove('uploading');
+    alert('Upload failed — server unreachable.');
+  }
+}
+
+function _showUploadConflict(name) {
+  const dropZone = document.getElementById('file-drop-zone');
+  if (!dropZone) return;
+  dropZone.classList.remove('uploading');
+  dropZone.innerHTML = `
+    <div class="upload-conflict">
+      <div class="upload-conflict-title">&#9888; <strong>${esc(name)}</strong> already exists</div>
+      <label class="upload-conflict-label">Save as a different name:</label>
+      <div class="upload-conflict-row">
+        <input class="upload-rename-input" id="upload-rename-input" value="${esc(name)}" spellcheck="false">
+        <button class="btn-file-load" id="btn-conflict-rename">Save</button>
+      </div>
+      <div class="upload-conflict-or">— or —</div>
+      <div class="upload-conflict-actions">
+        <button class="btn-conflict-overwrite" id="btn-conflict-overwrite">Overwrite existing file</button>
+        <button class="btn-ghost" id="btn-conflict-cancel">Cancel</button>
+      </div>
+    </div>`;
+
+  document.getElementById('btn-conflict-rename')?.addEventListener('click', async () => {
+    const newName = document.getElementById('upload-rename-input')?.value.trim();
+    if (!newName) return;
+    const ext = newName.slice(newName.lastIndexOf('.')).toLowerCase();
+    if (!['.yaml', '.yml', '.json'].includes(ext)) {
+      alert('Filename must end in .yaml, .yml, or .json'); return;
+    }
+    await _doUpload(_pendingUpload, newName, false);
+  });
+
+  document.getElementById('btn-conflict-overwrite')?.addEventListener('click', async () => {
+    await _doUpload(_pendingUpload, name, true);
+  });
+
+  document.getElementById('btn-conflict-cancel')?.addEventListener('click', () => {
+    _pendingUpload = null;
+    render('home');
+  });
+}
+
+async function reloadQuestions() {
+  try {
+    const resp = await fetch('questions.json');
+    if (!resp.ok) throw new Error();
+    const data = await resp.json();
+    const defaultMeta = { title: 'Exam Prep', description: '', pass_mark: 80, time_limit: null };
+    state.questions = Array.isArray(data) ? data : (data.questions ?? []);
+    state.meta      = Array.isArray(data) ? defaultMeta : { ...defaultMeta, ...(data.meta ?? {}) };
+    document.title  = state.meta.title || 'Exam Prep';
+  } catch { /* keep existing state */ }
+  await loadFileList();
+  render('home');
+}
 
 /* ── Session persistence ───────────────────────────── */
 
@@ -418,6 +540,32 @@ function renderHome() {
         <button class="btn-continue" id="btn-continue-session">Continue →</button>
       </div>` : ''}
 
+      <p class="section-title">Question Sets</p>
+      ${state.files.length > 0 ? `
+      <div class="file-list">
+        ${state.files.map(f => `
+          <div class="file-card ${f.active ? 'file-card-active' : ''}">
+            <div class="file-card-info">
+              <div class="file-card-title">${esc(f.title)}</div>
+              <div class="file-card-meta">${f.count} question${f.count !== 1 ? 's' : ''} · <span class="file-card-name">${esc(f.name)}</span></div>
+            </div>
+            <div class="file-card-actions">
+              ${f.active
+                ? `<span class="file-badge-active">Active</span>`
+                : `<button class="btn-file-load" data-file-load="${esc(f.name)}">Load</button>`}
+              ${!f.active
+                ? `<button class="btn-file-delete" data-file-delete="${esc(f.name)}" title="Delete this file">✕</button>`
+                : ''}
+            </div>
+          </div>`).join('')}
+      </div>` : ''}
+      <div class="file-drop-zone" id="file-drop-zone">
+        <span class="file-drop-icon">⬆</span>
+        <span class="file-drop-label">Drop a <code>.yaml</code> or <code>.json</code> file here</span>
+        <label class="btn-file-pick" for="file-input">Browse files</label>
+        <input type="file" id="file-input" accept=".yaml,.yml,.json" style="display:none">
+      </div>
+
       <p class="section-title">Practice</p>
       <div class="mode-list">
         <button class="mode-btn ${total === 0 ? 'disabled' : ''}" data-mode="all" data-type="practice">
@@ -745,6 +893,33 @@ function attachHandlers(screen) {
         render('home');
       }
     });
+
+    document.querySelectorAll('[data-file-load]').forEach(btn => {
+      btn.addEventListener('click', () => switchFile(btn.dataset.fileLoad));
+    });
+    document.querySelectorAll('[data-file-delete]').forEach(btn => {
+      btn.addEventListener('click', () => deleteFile(btn.dataset.fileDelete));
+    });
+
+    const dropZone  = document.getElementById('file-drop-zone');
+    const fileInput = document.getElementById('file-input');
+
+    fileInput?.addEventListener('change', e => {
+      if (e.target.files[0]) uploadFile(e.target.files[0]);
+    });
+    dropZone?.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone?.addEventListener('dragleave', e => {
+      if (!dropZone.contains(e.relatedTarget)) dropZone.classList.remove('dragover');
+    });
+    dropZone?.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) uploadFile(file);
+    });
   }
 
   if (screen === 'exam') {
@@ -858,6 +1033,7 @@ async function init() {
     }
 
     document.title = state.meta.title || 'Exam Prep';
+    await loadFileList();
     render('home');
   } catch {
     render('error');

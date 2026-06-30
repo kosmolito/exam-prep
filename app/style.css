@@ -1046,3 +1046,215 @@ details[open].explanation > summary::before { transform: rotate(90deg); }
   line-height: 1;
   color: #F6AD55;
 }
+
+/* ── Question Sets (file list) ─────────────────────── */
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  transition: border-color .15s;
+}
+.file-card-active {
+  border-color: var(--purple);
+  background: var(--purple-light);
+}
+
+.file-card-info {
+  flex: 1;
+  min-width: 0;
+}
+.file-card-title {
+  font-weight: 700;
+  font-size: .95rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.file-card-meta {
+  font-size: .78rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.file-card-name {
+  font-family: "SF Mono", "Fira Code", Consolas, monospace;
+  font-size: .74rem;
+}
+
+.file-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.file-badge-active {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--purple-dark);
+  background: none;
+  padding: 3px 8px;
+  border-radius: 20px;
+  border: 1.5px solid var(--purple);
+}
+
+.btn-file-load {
+  background: var(--purple);
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 7px;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-file-load:hover { background: var(--purple-dark); }
+
+.btn-file-delete {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  padding: 5px 9px;
+  font-size: .85rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.btn-file-delete:hover {
+  border-color: var(--red-mid);
+  color: var(--red);
+}
+
+/* ── File import drop zone ─────────────────────────── */
+.file-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 24px 16px;
+  margin-bottom: 24px;
+  background: var(--bg);
+  text-align: center;
+  transition: border-color .15s, background .15s;
+  cursor: default;
+}
+.file-drop-zone.dragover {
+  border-color: var(--purple);
+  background: var(--purple-light);
+}
+.file-drop-zone.uploading {
+  border-color: var(--purple);
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+.file-drop-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--muted);
+}
+.file-drop-label {
+  font-size: .85rem;
+  color: var(--muted);
+}
+
+.btn-file-pick {
+  display: inline-block;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 16px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.btn-file-pick:hover {
+  border-color: var(--purple);
+  color: var(--purple);
+}
+
+/* ── Upload conflict UI ────────────────────────────── */
+.upload-conflict {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+}
+
+.upload-conflict-title {
+  font-size: .9rem;
+  color: #92400E;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.upload-conflict-label {
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.upload-conflict-row {
+  display: flex;
+  gap: 8px;
+}
+
+.upload-rename-input {
+  flex: 1;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: .85rem;
+  font-family: "SF Mono", "Fira Code", Consolas, monospace;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color .15s;
+}
+.upload-rename-input:focus { border-color: var(--purple); }
+
+.upload-conflict-or {
+  text-align: center;
+  font-size: .75rem;
+  color: var(--muted);
+}
+
+.upload-conflict-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-conflict-overwrite {
+  background: none;
+  border: 1.5px solid var(--red-mid);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--red);
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-conflict-overwrite:hover { background: var(--red-light); }
